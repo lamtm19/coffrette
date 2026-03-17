@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d0d11" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Coffrette</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="logo_coffrette.png" type="image/png" />
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="header-inner">
+        <button class="btn-back hidden" id="btnBack" aria-label="Retour">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <span class="header-title" id="headerTitle">Coffrette</span>
+        <button class="btn-icon" id="btnHistory" aria-label="Historique">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- VIEWS -->
+    <main class="app-main">
+
+      <!-- HOME -->
+      <section class="view active" id="viewHome">
+        <div class="view-content">
+          <div class="total-banner">
+            <p class="total-label">Total en caisse</p>
+            <p class="total-amount" id="totalAmount">0 €</p>
+            <div class="total-sub">
+              <span id="totalSubParis">Paris 0 €</span>
+              <span class="total-sep">·</span>
+              <span id="totalSubIvry">Ivry 0 €</span>
+            </div>
+          </div>
+
+          <div class="section-label">Coffrettes</div>
+          <div class="cards-row">
+            <div class="card card--vault card--paris" data-action="open-vault" data-vault="paris" role="button" tabindex="0">
+              <div class="card-top">
+                <span class="vault-emoji">🗼</span>
+                <svg class="card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <span class="card-name">Paris</span>
+              <span class="card-amount" id="amountParis">0 €</span>
+            </div>
+            <div class="card card--vault card--ivry" data-action="open-vault" data-vault="ivry" role="button" tabindex="0">
+              <div class="card-top">
+                <span class="vault-emoji">🏢</span>
+                <svg class="card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <span class="card-name">Ivry</span>
+              <span class="card-amount" id="amountIvry">0 €</span>
+            </div>
+          </div>
+
+          <div class="section-label">Ce mois-ci</div>
+          <div class="cards-row">
+            <div class="card card--stat card--out" data-action="open-detail" data-detail="expenses" role="button" tabindex="0">
+              <div class="stat-pip pip--out"></div>
+              <span class="card-name">Dépenses</span>
+              <span class="card-amount card-amount--out" id="amountExpenses">0 €</span>
+            </div>
+            <div class="card card--stat card--in" data-action="open-detail" data-detail="incomes" role="button" tabindex="0">
+              <div class="stat-pip pip--in"></div>
+              <span class="card-name">Rentrées</span>
+              <span class="card-amount card-amount--in" id="amountIncomes">0 €</span>
+            </div>
+          </div>
+
+          <div class="section-label section-label--flex">
+            Récent
+            <button class="link-btn" id="btnSeeAll">Tout voir →</button>
+          </div>
+          <div class="ops-list" id="recentList">
+            <p class="empty-state">Aucune opération pour l'instant</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- VAULT DETAIL -->
+      <section class="view" id="viewVault">
+        <div class="view-content">
+          <div class="detail-hero" id="vaultHero">
+            <p class="detail-hero-sub" id="vaultHeroLabel">Coffrette</p>
+            <p class="detail-hero-amount" id="vaultHeroAmount">0 €</p>
+          </div>
+          <div class="section-label">Opérations</div>
+          <div class="ops-list" id="vaultOpsList">
+            <p class="empty-state">Aucune opération</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- EXPENSES DETAIL -->
+      <section class="view" id="viewExpenses">
+        <div class="view-content">
+          <div class="detail-hero detail-hero--out">
+            <p class="detail-hero-sub">Dépenses du mois</p>
+            <p class="detail-hero-amount" id="expensesHeroAmount">0 €</p>
+          </div>
+          <div class="section-label">Opérations</div>
+          <div class="ops-list" id="expensesOpsList">
+            <p class="empty-state">Aucune dépense ce mois-ci</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- INCOMES DETAIL -->
+      <section class="view" id="viewIncomes">
+        <div class="view-content">
+          <div class="detail-hero detail-hero--in">
+            <p class="detail-hero-sub">Rentrées du mois</p>
+            <p class="detail-hero-amount" id="incomesHeroAmount">0 €</p>
+          </div>
+          <div class="section-label">Opérations</div>
+          <div class="ops-list" id="incomesOpsList">
+            <p class="empty-state">Aucune rentrée ce mois-ci</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- HISTORY -->
+      <section class="view" id="viewHistory">
+        <div class="view-content">
+          <div class="history-filter">
+            <select id="filterMonth" class="filter-select" aria-label="Filtrer par mois">
+              <option value="all">Tous les mois</option>
+            </select>
+          </div>
+          <div id="historyContent">
+            <p class="empty-state">Aucun historique</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FAB -->
+    <button class="fab" id="fab" aria-label="Nouvelle opération">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+
+  </div>
+
+  <!-- MODAL NEW / EDIT -->
+  <div class="modal-overlay hidden" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Nouvelle opération</h2>
+        <button class="modal-close" id="modalClose" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Type : seulement 2 options -->
+        <div class="form-group">
+          <label class="form-label">Type d'opération</label>
+          <div class="type-grid">
+            <button type="button" class="type-btn" data-type="income">
+              <span class="type-icon">💰</span><span>Rentrée</span>
+            </button>
+            <button type="button" class="type-btn" data-type="expense">
+              <span class="type-icon">🛒</span><span>Dépense</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Coffrette — toujours visible -->
+        <div class="form-group">
+          <label class="form-label">Coffrette concernée</label>
+          <div class="vault-select-row">
+            <button type="button" class="vault-btn" data-vault="paris">🗼 Paris</button>
+            <button type="button" class="vault-btn" data-vault="ivry">🏢Ivry</button>
+          </div>
+        </div>
+
+        <!-- Amount -->
+        <div class="form-group">
+          <label class="form-label" for="inputAmount">Montant</label>
+          <div class="input-wrap">
+            <span class="input-prefix">€</span>
+            <input type="number" id="inputAmount" class="form-input" placeholder="0,00" min="0.01" step="0.01" inputmode="decimal" />
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div class="form-group">
+          <label class="form-label" for="inputNote">Note <span class="optional">(facultatif)</span></label>
+          <input type="text" id="inputNote" class="form-input" placeholder="Courses, salaire, loyer…" maxlength="100" />
+        </div>
+
+        <!-- Date -->
+        <div class="form-group">
+          <label class="form-label" for="inputDate">Date</label>
+          <input type="date" id="inputDate" class="form-input" />
+        </div>
+
+        <button type="button" class="btn-submit" id="btnSubmit">Enregistrer</button>
+        <p class="form-error hidden" id="formError"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM DELETE -->
+  <div class="modal-overlay hidden" id="confirmOverlay" role="dialog" aria-modal="true">
+    <div class="modal modal--sm">
+      <p class="confirm-text">Supprimer cette opération ? Cette action est irréversible.</p>
+      <div class="confirm-actions">
+        <button class="btn-ghost" id="btnCancelDelete">Annuler</button>
+        <button class="btn-danger" id="btnConfirmDelete">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
