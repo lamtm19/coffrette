@@ -1,0 +1,55 @@
+# 💰 Coffrette — Gestion d’argent liquide
+
+Application mobile-first permettant de suivre ses dépenses et ses rentrées d’argent en liquide, avec une vision claire de son argent disponible et un historique pour mieux gérer son budget au quotidien.
+
+---
+
+## 🚀 Fonctionnalités
+
+- 💸 Suivi des dépenses (ce que tu dépenses)  
+- 💰 Suivi des rentrées d’argent (ce que tu ajoutes)  
+- 🧾 Historique complet des transactions  
+- 🏦 Gestion de plusieurs coffrettes (ex : Paris, Ivry…)  
+- 📊 Vision claire du solde disponible  
+- 📱 Interface mobile-first simple et rapide  
+- 💾 Sauvegarde automatique (localStorage)
+
+---
+
+## 📲 Installation (comme une app mobile)
+
+### 📱 Sur iPhone (Safari)
+
+1. Ouvre le site dans Safari  
+2. Clique sur le bouton Partager (📤)  
+3. Sélectionne "Sur l’écran d’accueil"  
+4. Clique sur Ajouter  
+
+👉 L’application apparaîtra directement sur ton écran d’accueil
+
+---
+
+### 🤖 Sur Android (Chrome)
+
+1. Ouvre le site dans Chrome  
+2. Clique sur les 3 points en haut à droite  
+3. Appuie sur "Ajouter à l’écran d’accueil"  
+4. Valide  
+
+👉 L’application sera installée comme une app classique
+
+---
+
+## 🛠️ Technologies utilisées
+
+- HTML / CSS / JavaScript  
+- LocalStorage (stockage local des données)  
+- Design mobile-first  
+
+---
+
+## 📦 Installation en local
+
+```bash
+git clone https://github.com/lamtm19/coffrette.git
+cd coffrette
