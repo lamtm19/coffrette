@@ -12,232 +12,273 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <link rel="apple-touch-icon" href="logo_coffrette.png" />
+
 </head>
 <body>
+<div id="app">
 
-  <div id="app">
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-inner">
+      <button class="btn-back hidden" id="btnBack" aria-label="Retour">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      </button>
+      <span class="header-title" id="headerTitle">Coffrette</span>
+      <button class="btn-icon" id="btnHistory" aria-label="Historique">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </button>
+    </div>
+  </header>
 
-    <!-- HEADER -->
-    <header class="app-header">
-      <div class="header-inner">
-        <button class="btn-back hidden" id="btnBack" aria-label="Retour">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-        </button>
-        <span class="header-title" id="headerTitle">Coffrette</span>
-        <button class="btn-icon" id="btnHistory" aria-label="Historique">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+  <!-- VIEWS -->
+  <main class="app-main">
+
+    <!-- HOME -->
+    <section class="view active" id="viewHome">
+      <div class="view-content">
+        <div class="total-banner">
+          <p class="total-label">Total en caisse</p>
+          <p class="total-amount" id="totalAmount">0 €</p>
+          <div class="total-sub" id="totalSub"></div>
+        </div>
+
+        <div class="section-label section-label--flex">
+          Coffrettes
+          <button class="link-btn" id="btnManageVaults">Gérer →</button>
+        </div>
+        <div class="cards-row" id="vaultCards"></div>
+
+        <div class="section-label">Ce mois-ci</div>
+        <div class="cards-row">
+          <div class="card card--stat card--out" data-action="open-detail" data-detail="expenses" role="button" tabindex="0">
+            <div class="stat-pip pip--out"></div>
+            <span class="card-name">Dépenses</span>
+            <span class="card-amount card-amount--out" id="amountExpenses">0 €</span>
+          </div>
+          <div class="card card--stat card--in" data-action="open-detail" data-detail="incomes" role="button" tabindex="0">
+            <div class="stat-pip pip--in"></div>
+            <span class="card-name">Rentrées</span>
+            <span class="card-amount card-amount--in" id="amountIncomes">0 €</span>
+          </div>
+          <div class="card card--bilan">
+            <div class="bilan-left">
+              <span class="bilan-label">Bilan du mois</span>
+              <span class="bilan-sub" id="bilanSub">Rentrées − Dépenses</span>
+              <span class="bilan-amount" id="bilanAmount">0 €</span>
+            </div>
+            <span class="bilan-badge" id="bilanBadge">Équilibre</span>
+          </div>
+        </div>
+
+        <div class="section-label section-label--flex">
+          Récent
+          <button class="link-btn" id="btnSeeAll">Tout voir →</button>
+        </div>
+        <div class="ops-list" id="recentList">
+          <p class="empty-state">Aucune opération pour l'instant</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VAULT DETAIL -->
+    <section class="view" id="viewVault">
+      <div class="view-content">
+        <div class="detail-hero" id="vaultHero">
+          <p class="detail-hero-sub" id="vaultHeroLabel">Coffrette</p>
+          <p class="detail-hero-amount" id="vaultHeroAmount">0 €</p>
+          <p class="detail-hero-initial" id="vaultHeroInitial"></p>
+        </div>
+        <!-- Bilan mois pour cette coffrette -->
+        <div class="vault-month-bilan" id="vaultMonthBilan">
+          <div class="vmb-item">
+            <span class="vmb-label">Rentrées</span>
+            <span class="vmb-value vmb-value--in" id="vaultMonthInc">0 €</span>
+          </div>
+          <div class="vmb-sep"></div>
+          <div class="vmb-item">
+            <span class="vmb-label">Dépenses</span>
+            <span class="vmb-value vmb-value--out" id="vaultMonthExp">0 €</span>
+          </div>
+          <div class="vmb-sep"></div>
+          <div class="vmb-item">
+            <span class="vmb-label">Bilan</span>
+            <span class="vmb-value" id="vaultMonthBilanAmt">0 €</span>
+          </div>
+        </div>
+        <div class="section-label">Opérations</div>
+        <div class="ops-list" id="vaultOpsList">
+          <p class="empty-state">Aucune opération</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXPENSES DETAIL -->
+    <section class="view" id="viewExpenses">
+      <div class="view-content">
+        <div class="detail-hero detail-hero--out">
+          <p class="detail-hero-sub">Dépenses du mois</p>
+          <p class="detail-hero-amount" id="expensesHeroAmount">0 €</p>
+        </div>
+        <div class="section-label">Opérations</div>
+        <div class="ops-list" id="expensesOpsList">
+          <p class="empty-state">Aucune dépense ce mois-ci</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- INCOMES DETAIL -->
+    <section class="view" id="viewIncomes">
+      <div class="view-content">
+        <div class="detail-hero detail-hero--in">
+          <p class="detail-hero-sub">Rentrées du mois</p>
+          <p class="detail-hero-amount" id="incomesHeroAmount">0 €</p>
+        </div>
+        <div class="section-label">Opérations</div>
+        <div class="ops-list" id="incomesOpsList">
+          <p class="empty-state">Aucune rentrée ce mois-ci</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="view" id="viewHistory">
+      <div class="view-content">
+        <div class="history-filter">
+          <select id="filterMonth" class="filter-select" aria-label="Filtrer par mois">
+            <option value="all">Tous les mois</option>
+          </select>
+        </div>
+        <div id="historyContent">
+          <p class="empty-state">Aucun historique</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- MANAGE VAULTS -->
+    <section class="view" id="viewManageVaults">
+      <div class="view-content">
+        <div class="manage-list" id="manageVaultList"></div>
+        <button class="btn-add-vault" id="btnAddVault">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter une coffrette
         </button>
       </div>
-    </header>
+    </section>
 
-    <!-- VIEWS -->
-    <main class="app-main">
+  </main>
 
-      <!-- HOME -->
-      <section class="view active" id="viewHome">
-        <div class="view-content">
-          <div class="total-banner">
-            <p class="total-label">Total en caisse</p>
-            <p class="total-amount" id="totalAmount">0 €</p>
-            <div class="total-sub" id="totalSub"></div>
-          </div>
+  <!-- FAB -->
+  <button class="fab" id="fab" aria-label="Nouvelle opération">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
 
-          <div class="section-label section-label--flex">
-            Coffrettes
-            <button class="link-btn" id="btnManageVaults">Gérer →</button>
-          </div>
-          <div class="cards-row" id="vaultCards"></div>
+</div><!-- /app -->
 
-          <div class="section-label">Ce mois-ci</div>
-          <div class="cards-row">
-            <div class="card card--stat card--out" data-action="open-detail" data-detail="expenses" role="button" tabindex="0">
-              <div class="stat-pip pip--out"></div>
-              <span class="card-name">Dépenses</span>
-              <span class="card-amount card-amount--out" id="amountExpenses">0 €</span>
-            </div>
-            <div class="card card--stat card--in" data-action="open-detail" data-detail="incomes" role="button" tabindex="0">
-              <div class="stat-pip pip--in"></div>
-              <span class="card-name">Rentrées</span>
-              <span class="card-amount card-amount--in" id="amountIncomes">0 €</span>
-            </div>
-            <!-- Bilan mensuel -->
-            <div class="card card--bilan" id="bilanCard">
-              <div class="bilan-left">
-                <span class="bilan-label">Bilan du mois</span>
-                <span class="bilan-sub" id="bilanSub">Rentrées − Dépenses</span>
-                <span class="bilan-amount" id="bilanAmount">0 €</span>
-              </div>
-              <span class="bilan-badge" id="bilanBadge">Équilibre</span>
-            </div>
-          </div>
-
-          <div class="section-label section-label--flex">
-            Récent
-            <button class="link-btn" id="btnSeeAll">Tout voir →</button>
-          </div>
-          <div class="ops-list" id="recentList">
-            <p class="empty-state">Aucune opération pour l'instant</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- VAULT DETAIL -->
-      <section class="view" id="viewVault">
-        <div class="view-content">
-          <div class="detail-hero" id="vaultHero">
-            <p class="detail-hero-sub" id="vaultHeroLabel">Coffrette</p>
-            <p class="detail-hero-amount" id="vaultHeroAmount">0 €</p>
-          </div>
-          <div class="section-label">Opérations</div>
-          <div class="ops-list" id="vaultOpsList">
-            <p class="empty-state">Aucune opération</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- EXPENSES DETAIL -->
-      <section class="view" id="viewExpenses">
-        <div class="view-content">
-          <div class="detail-hero detail-hero--out">
-            <p class="detail-hero-sub">Dépenses du mois</p>
-            <p class="detail-hero-amount" id="expensesHeroAmount">0 €</p>
-          </div>
-          <div class="section-label">Opérations</div>
-          <div class="ops-list" id="expensesOpsList">
-            <p class="empty-state">Aucune dépense ce mois-ci</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- INCOMES DETAIL -->
-      <section class="view" id="viewIncomes">
-        <div class="view-content">
-          <div class="detail-hero detail-hero--in">
-            <p class="detail-hero-sub">Rentrées du mois</p>
-            <p class="detail-hero-amount" id="incomesHeroAmount">0 €</p>
-          </div>
-          <div class="section-label">Opérations</div>
-          <div class="ops-list" id="incomesOpsList">
-            <p class="empty-state">Aucune rentrée ce mois-ci</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- HISTORY -->
-      <section class="view" id="viewHistory">
-        <div class="view-content">
-          <div class="history-filter">
-            <select id="filterMonth" class="filter-select" aria-label="Filtrer par mois">
-              <option value="all">Tous les mois</option>
-            </select>
-          </div>
-          <div id="historyContent">
-            <p class="empty-state">Aucun historique</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- MANAGE VAULTS -->
-      <section class="view" id="viewManageVaults">
-        <div class="view-content">
-          <div class="manage-list" id="manageVaultList"></div>
-          <button class="btn-add-vault" id="btnAddVault">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Ajouter une coffrette
+<!-- MODAL OPÉRATION -->
+<div class="modal-overlay hidden" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modalTitle">Nouvelle opération</h2>
+      <button class="modal-close" id="modalClose" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Type d'opération</label>
+        <div class="type-grid" id="typeGrid">
+          <button type="button" class="type-btn" data-type="income">
+            <span class="type-icon">💰</span><span>Rentrée</span>
+          </button>
+          <button type="button" class="type-btn" data-type="expense">
+            <span class="type-icon">🛒</span><span>Dépense</span>
           </button>
         </div>
-      </section>
-
-    </main>
-
-    <!-- FAB -->
-    <button class="fab" id="fab" aria-label="Nouvelle opération">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-
-  </div>
-
-  <!-- MODAL OPÉRATION -->
-  <div class="modal-overlay hidden" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 class="modal-title" id="modalTitle">Nouvelle opération</h2>
-        <button class="modal-close" id="modalClose" aria-label="Fermer">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
       </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">Type d'opération</label>
-          <div class="type-grid">
-            <button type="button" class="type-btn" data-type="income">
-              <span class="type-icon">💰</span><span>Rentrée</span>
-            </button>
-            <button type="button" class="type-btn" data-type="expense">
-              <span class="type-icon">🛒</span><span>Dépense</span>
-            </button>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Coffrette concernée</label>
-          <div class="vault-select-row" id="vaultSelectRow"></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="inputAmount">Montant</label>
-          <div class="input-wrap">
-            <span class="input-prefix">€</span>
-            <input type="number" id="inputAmount" class="form-input" placeholder="0,00" min="0.01" step="0.01" inputmode="decimal" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="inputNote">Note <span class="optional">(facultatif)</span></label>
-          <input type="text" id="inputNote" class="form-input" placeholder="Courses, salaire, loyer…" maxlength="100" />
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="inputDate">Date</label>
-          <input type="date" id="inputDate" class="form-input" />
-        </div>
-        <button type="button" class="btn-submit" id="btnSubmit">Enregistrer</button>
-        <p class="form-error hidden" id="formError"></p>
+      <div class="form-group">
+        <label class="form-label">Coffrette concernée</label>
+        <div class="vault-select-row" id="vaultSelectRow"></div>
       </div>
+      <div class="form-group">
+        <label class="form-label" for="inputAmount">Montant</label>
+        <div class="input-wrap">
+          <span class="input-prefix">€</span>
+          <input type="number" id="inputAmount" class="form-input" placeholder="0,00" min="0.01" step="0.01" inputmode="decimal" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inputNote">Note <span class="optional">(facultatif)</span></label>
+        <input type="text" id="inputNote" class="form-input" placeholder="Courses, salaire, loyer…" maxlength="100" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inputDate">Date</label>
+        <input type="date" id="inputDate" class="form-input" />
+      </div>
+      <button type="button" class="btn-submit" id="btnSubmit">Enregistrer</button>
+      <p class="form-error hidden" id="formError"></p>
     </div>
   </div>
+</div>
 
-  <!-- MODAL COFFRETTE (ajout / renommage) -->
-  <div class="modal-overlay hidden" id="vaultModalOverlay" role="dialog" aria-modal="true">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 class="modal-title" id="vaultModalTitle">Nouvelle coffrette</h2>
-        <button class="modal-close" id="vaultModalClose" aria-label="Fermer">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label" for="vaultInputEmoji">Emoji</label>
-          <input type="text" id="vaultInputEmoji" class="form-input form-input--emoji" placeholder="🏦" maxlength="2" />
+<!-- MODAL SOLDE INITIAL -->
+<div class="modal-overlay hidden" id="initialModalOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="initialModalTitle">Solde initial</h2>
+      <button class="modal-close" id="initialModalClose" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">Ce montant représente ce que tu avais déjà dans cette coffrette. Il sera ajouté au solde mais n'apparaîtra <strong>pas</strong> dans les statistiques de rentrées.</p>
+      <div class="form-group">
+        <label class="form-label" for="initialAmount">Montant de départ</label>
+        <div class="input-wrap">
+          <span class="input-prefix">€</span>
+          <input type="number" id="initialAmount" class="form-input" placeholder="0,00" min="0" step="0.01" inputmode="decimal" />
         </div>
-        <div class="form-group">
-          <label class="form-label" for="vaultInputName">Nom</label>
-          <input type="text" id="vaultInputName" class="form-input" placeholder="Ex : Lyon, Vacances…" maxlength="30" />
-        </div>
-        <button type="button" class="btn-submit" id="vaultModalSubmit">Enregistrer</button>
-        <p class="form-error hidden" id="vaultFormError"></p>
       </div>
+      <button type="button" class="btn-submit" id="initialSubmit">Enregistrer</button>
+      <p class="form-error hidden" id="initialError"></p>
     </div>
   </div>
+</div>
 
-  <!-- CONFIRM -->
-  <div class="modal-overlay hidden" id="confirmOverlay" role="dialog" aria-modal="true">
-    <div class="modal modal--sm">
-      <p class="confirm-text" id="confirmText">Confirmer la suppression ?</p>
-      <div class="confirm-actions">
-        <button class="btn-ghost" id="btnCancelDelete">Annuler</button>
-        <button class="btn-danger" id="btnConfirmDelete">Supprimer</button>
+<!-- MODAL COFFRETTE (ajout / renommage) -->
+<div class="modal-overlay hidden" id="vaultModalOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="vaultModalTitle">Nouvelle coffrette</h2>
+      <button class="modal-close" id="vaultModalClose" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="vaultInputEmoji">Emoji</label>
+        <input type="text" id="vaultInputEmoji" class="form-input form-input--emoji" placeholder="🏦" maxlength="2" />
       </div>
+      <div class="form-group">
+        <label class="form-label" for="vaultInputName">Nom</label>
+        <input type="text" id="vaultInputName" class="form-input" placeholder="Ex : Lyon, Vacances…" maxlength="30" />
+      </div>
+      <button type="button" class="btn-submit" id="vaultModalSubmit">Enregistrer</button>
+      <p class="form-error hidden" id="vaultFormError"></p>
     </div>
   </div>
+</div>
 
-  <script src="app.js"></script>
+<!-- CONFIRM -->
+<div class="modal-overlay hidden" id="confirmOverlay" role="dialog" aria-modal="true">
+  <div class="modal modal--sm">
+    <p class="confirm-text" id="confirmText">Confirmer la suppression ?</p>
+    <div class="confirm-actions">
+      <button class="btn-ghost" id="btnCancelDelete">Annuler</button>
+      <button class="btn-danger" id="btnConfirmDelete">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>
