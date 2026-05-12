@@ -157,16 +157,18 @@ const Operations = (() => {
   function _apply(state, op) {
     const v = state.vaults.find(v => v.id === op.vaultId);
     if (!v) return;
-    if (op.type === 'income')  v.balance = +(v.balance + op.amount).toFixed(2);
-    if (op.type === 'expense') v.balance = +(v.balance - op.amount).toFixed(2);
+    if (op.type === 'income')   v.balance = +(v.balance + op.amount).toFixed(2);
+    if (op.type === 'expense')  v.balance = +(v.balance - op.amount).toFixed(2);
+    if (op.type === 'transfer') v.balance = +(v.balance - op.amount).toFixed(2);
     // 'initial' géré par Vaults.setInitial
   }
 
   function _revert(state, op) {
     const v = state.vaults.find(v => v.id === op.vaultId);
     if (!v) return;
-    if (op.type === 'income')  v.balance = +(v.balance - op.amount).toFixed(2);
-    if (op.type === 'expense') v.balance = +(v.balance + op.amount).toFixed(2);
+    if (op.type === 'income')   v.balance = +(v.balance - op.amount).toFixed(2);
+    if (op.type === 'expense')  v.balance = +(v.balance + op.amount).toFixed(2);
+    if (op.type === 'transfer') v.balance = +(v.balance + op.amount).toFixed(2);
   }
 
   function add({ type, vaultId, amount, note, date }) {
@@ -200,11 +202,11 @@ const Operations = (() => {
     Storage.setState(state);
   }
 
-  /** Opérations du mois courant, hors soldes initiaux */
+  /** Opérations du mois courant, hors soldes initiaux et virements */
   function currentMonth() {
     const key = DateHelpers.toMonthKey(DateHelpers.today());
     return Storage.getState().operations.filter(o =>
-      o.type !== 'initial' && DateHelpers.toMonthKey(o.date) === key
+      o.type !== 'initial' && o.type !== 'transfer' && DateHelpers.toMonthKey(o.date) === key
     );
   }
 
@@ -213,7 +215,7 @@ const Operations = (() => {
 
   function bilanForMonth(monthKey) {
     const ops = Storage.getState().operations.filter(o =>
-      o.type !== 'initial' && DateHelpers.toMonthKey(o.date) === monthKey
+      o.type !== 'initial' && o.type !== 'transfer' && DateHelpers.toMonthKey(o.date) === monthKey
     );
     const inc = ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
     const exp = ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
@@ -223,7 +225,7 @@ const Operations = (() => {
   /** Bilan d'un mois pour une coffrette spécifique */
   function bilanForVaultMonth(vaultId, monthKey) {
     const ops = Storage.getState().operations.filter(o =>
-      o.vaultId === vaultId && o.type !== 'initial' && DateHelpers.toMonthKey(o.date) === monthKey
+      o.vaultId === vaultId && o.type !== 'initial' && o.type !== 'transfer' && DateHelpers.toMonthKey(o.date) === monthKey
     );
     const inc = ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
     const exp = ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
@@ -251,7 +253,7 @@ const Operations = (() => {
 
 /* ── UI HELPERS ───────────────────────────────────────────── */
 const UI = (() => {
-  const typeLabel = { income:'Rentrée', expense:'Dépense', initial:'Solde initial' };
+  const typeLabel = { income:'Rentrée', expense:'Dépense', initial:'Solde initial', transfer:'Virement' };
 
   function vaultLabel(vaultId) {
     const v = Vaults.getById(vaultId);
@@ -259,18 +261,21 @@ const UI = (() => {
   }
 
   function pipClass(type) {
-    if (type==='income')  return 'op-pip--income';
-    if (type==='expense') return 'op-pip--expense';
+    if (type==='income')   return 'op-pip--income';
+    if (type==='expense')  return 'op-pip--expense';
+    if (type==='transfer') return 'op-pip--transfer';
     return 'op-pip--initial';
   }
   function amountClass(type) {
-    if (type==='income')  return 'op-amount--pos';
-    if (type==='expense') return 'op-amount--neg';
+    if (type==='income')   return 'op-amount--pos';
+    if (type==='expense')  return 'op-amount--neg';
+    if (type==='transfer') return 'op-amount--purple';
     return 'op-amount--blue';
   }
   function amountSign(type) {
-    if (type==='income')  return '+';
-    if (type==='expense') return '−';
+    if (type==='income')   return '+';
+    if (type==='expense')  return '−';
+    if (type==='transfer') return '−';
     return '';
   }
 
@@ -511,6 +516,54 @@ const InitialModal = (() => {
   return { open };
 })();
 
+/* ── MODAL MODIFIER SOLDE ─────────────────────────────────── */
+const BalanceEditModal = (() => {
+  const overlay   = document.getElementById('balanceEditOverlay');
+  const btnClose  = document.getElementById('balanceEditClose');
+  const btnSubmit = document.getElementById('balanceEditSubmit');
+  const titleEl   = document.getElementById('balanceEditTitle');
+  const currentEl = document.getElementById('balanceEditCurrent');
+  const input     = document.getElementById('balanceEditInput');
+  const errorEl   = document.getElementById('balanceEditError');
+  let vaultId = null;
+
+  function open(id) {
+    vaultId = id;
+    const v = Vaults.getById(id);
+    titleEl.textContent  = `${v?.emoji || ''} ${v?.name || ''} · Modifier le solde`;
+    currentEl.textContent = Currency.format(v?.balance || 0);
+    input.value = '';
+    errorEl.classList.add('hidden');
+    overlay.classList.remove('hidden');
+    requestAnimationFrame(() => input.focus());
+  }
+
+  function close() { overlay.classList.add('hidden'); vaultId = null; }
+  function showError(msg) { errorEl.textContent = msg; errorEl.classList.remove('hidden'); }
+
+  btnClose.addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  btnSubmit.addEventListener('click', () => {
+    errorEl.classList.add('hidden');
+    const newBalance = parseFloat(input.value.replace(',', '.'));
+    if (isNaN(newBalance) || newBalance < 0) return showError('Montant invalide.');
+    const v    = Vaults.getById(vaultId);
+    const diff = +(newBalance - v.balance).toFixed(2);
+    if (diff === 0) { close(); return; }
+    const type   = diff > 0 ? 'income' : 'expense';
+    const amount = Math.abs(diff);
+    Operations.add({ type, vaultId, amount, note: '', date: DateHelpers.today() });
+    UI.toast(diff > 0 ? `Rentrée de ${Currency.format(amount)} ✓` : `Dépense de ${Currency.format(amount)} ✓`);
+    close();
+    Render.home();
+    Render.vault({ vaultId });
+  });
+
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') btnSubmit.click(); });
+  return { open };
+})();
+
 /* ── MODAL COFFRETTE ──────────────────────────────────────── */
 const VaultModal = (() => {
   const overlay    = document.getElementById('vaultModalOverlay');
@@ -611,8 +664,8 @@ const Render = (() => {
     document.getElementById('bilanBadge').className     = 'bilan-badge '+cl.badge;
     document.getElementById('bilanSub').textContent     = `+${Currency.format(inc)} − ${Currency.format(exp)}`;
 
-    // Récent (hors initiaux)
-    const recent = Storage.getState().operations.filter(o=>o.type!=='initial').slice(0,5);
+    // Récent (hors initiaux et virements)
+    const recent = Storage.getState().operations.filter(o=>o.type!=='initial' && o.type!=='transfer').slice(0,5);
     UI.renderOpList(document.getElementById('recentList'), recent, "Aucune opération pour l'instant");
   }
 
@@ -621,7 +674,11 @@ const Render = (() => {
     const v = Vaults.getById(vaultId);
     if (!v) return;
     document.getElementById('vaultHeroLabel').textContent  = `${v.emoji} ${v.name}`;
-    document.getElementById('vaultHeroAmount').textContent = Currency.format(v.balance);
+    const heroAmountEl = document.getElementById('vaultHeroAmount');
+    heroAmountEl.textContent = Currency.format(v.balance);
+    heroAmountEl.dataset.action  = 'edit-balance';
+    heroAmountEl.dataset.vaultId = vaultId;
+    heroAmountEl.classList.add('detail-hero-amount--editable');
 
     const initEl = document.getElementById('vaultHeroInitial');
     initEl.textContent = v.initialBalance > 0 ? `Solde initial : ${Currency.format(v.initialBalance)}` : '';
@@ -663,8 +720,8 @@ const Render = (() => {
     const container      = document.getElementById('historyContent');
     const currentKey     = DateHelpers.toMonthKey(DateHelpers.today());
 
-    // Opérations hors initiaux
-    const realOps = operations.filter(o=>o.type!=='initial');
+    // Opérations hors initiaux et virements bancaires
+    const realOps = operations.filter(o=>o.type!=='initial' && o.type!=='transfer');
 
     const months = [...new Set(realOps.map(o=>DateHelpers.toMonthKey(o.date)))].sort().reverse();
     const cur = filterSelect.value;
@@ -789,8 +846,9 @@ document.addEventListener('click', e=>{
   if (!el) return;
   const { action, vaultId, detail, id } = el.dataset;
 
-  if (action==='open-vault')  return Router.navigate('vault', { vaultId });
-  if (action==='open-detail') return Router.navigate(detail);
+  if (action==='open-vault')    return Router.navigate('vault', { vaultId });
+  if (action==='open-detail')  return Router.navigate(detail);
+  if (action==='edit-balance') return BalanceEditModal.open(vaultId);
 
   if (action==='edit') {
     const op = Storage.getState().operations.find(o=>o.id===id);

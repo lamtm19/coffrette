@@ -193,6 +193,9 @@
           <button type="button" class="type-btn" data-type="expense">
             <span class="type-icon">🛒</span><span>Dépense</span>
           </button>
+          <button type="button" class="type-btn type-btn--transfer" data-type="transfer">
+            <span class="type-icon">🏦</span><span>Virement</span>
+          </button>
         </div>
       </div>
       <div class="form-group">
@@ -275,6 +278,34 @@
     <div class="confirm-actions">
       <button class="btn-ghost" id="btnCancelDelete">Annuler</button>
       <button class="btn-danger" id="btnConfirmDelete">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MODIFIER SOLDE -->
+<div class="modal-overlay hidden" id="balanceEditOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="balanceEditTitle">Modifier le solde</h2>
+      <button class="modal-close" id="balanceEditClose" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">Saisis le nouveau solde total. La différence sera automatiquement enregistrée comme <strong>Rentrée</strong> si tu as plus, ou <strong>Dépense</strong> si tu as moins.</p>
+      <div class="form-group balance-current-group">
+        <span class="form-label">Solde actuel</span>
+        <span class="balance-current" id="balanceEditCurrent">0 €</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="balanceEditInput">Nouveau solde</label>
+        <div class="input-wrap">
+          <span class="input-prefix">€</span>
+          <input type="number" id="balanceEditInput" class="form-input" placeholder="0,00" min="0" step="0.01" inputmode="decimal" />
+        </div>
+      </div>
+      <button type="button" class="btn-submit" id="balanceEditSubmit">Enregistrer</button>
+      <p class="form-error hidden" id="balanceEditError"></p>
     </div>
   </div>
 </div>
