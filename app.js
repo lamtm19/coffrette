@@ -20,6 +20,7 @@ const Storage = (() => {
     ],
     operations: [],
     snapshots: {},
+    groups: [],
   });
 
   let state = defaultState();
@@ -46,6 +47,7 @@ const Storage = (() => {
           }));
         }
         if (!parsed.snapshots) parsed.snapshots = {};
+        if (!parsed.groups)   parsed.groups   = [];
         state = parsed;
       }
     } catch { state = defaultState(); }
@@ -148,6 +150,40 @@ const Vaults = (() => {
   }
 
   return { getAll, getById, add, rename, setInitial, remove };
+})();
+
+/* ── GROUPS ───────────────────────────────────────────────── */
+const Groups = (() => {
+  const genId = () => 'g_' + Date.now().toString(36);
+  const getAll      = ()       => Storage.getState().groups || [];
+  const getById     = id       => getAll().find(g => g.id === id);
+  const getForVault = vaultId  => getAll().find(g => g.vaultIds.includes(vaultId));
+
+  function add({ name, emoji, vaultIds }) {
+    const state = Storage.getState();
+    const group = { id: genId(), name: name.trim(), emoji: emoji || '📦', vaultIds: [...vaultIds] };
+    state.groups.push(group);
+    Storage.setState(state);
+    return group;
+  }
+
+  function update(id, changes) {
+    const state = Storage.getState();
+    const g = state.groups.find(g => g.id === id);
+    if (!g) return;
+    if (changes.name     !== undefined) g.name     = changes.name.trim();
+    if (changes.emoji    !== undefined) g.emoji    = changes.emoji || g.emoji;
+    if (changes.vaultIds !== undefined) g.vaultIds = [...changes.vaultIds];
+    Storage.setState(state);
+  }
+
+  function remove(id) {
+    const state = Storage.getState();
+    state.groups = state.groups.filter(g => g.id !== id);
+    Storage.setState(state);
+  }
+
+  return { getAll, getById, getForVault, add, update, remove };
 })();
 
 /* ── OPERATIONS ───────────────────────────────────────────── */
@@ -344,6 +380,7 @@ const UI = (() => {
 const Router = (() => {
   const views = {
     home:         document.getElementById('viewHome'),
+    group:        document.getElementById('viewGroup'),
     vault:        document.getElementById('viewVault'),
     expenses:     document.getElementById('viewExpenses'),
     incomes:      document.getElementById('viewIncomes'),
@@ -356,16 +393,18 @@ const Router = (() => {
 
   let current      = 'home';
   let vaultContext = null;
+  let groupContext = null;
 
   const titles = {
-    home:'Coffrette', vault:'', expenses:'Dépenses',
+    home:'Coffrette', group:'', vault:'', expenses:'Dépenses',
     incomes:'Rentrées', history:'Historique', manageVaults:'Mes coffrettes',
   };
 
   function navigate(viewId, params={}) {
     views[current]?.classList.remove('active');
     current      = viewId;
-    vaultContext = params.vaultId || null;
+    vaultContext = params.vaultId  || null;
+    groupContext = params.groupId  || null;
     views[viewId].classList.add('active');
     views[viewId].scrollTop = 0;
 
@@ -373,9 +412,12 @@ const Router = (() => {
     btnBack.classList.toggle('hidden', isHome);
     btnHistory.classList.toggle('hidden', !isHome);
 
-    if (viewId==='vault' && params.vaultId) {
+    if (viewId === 'vault' && params.vaultId) {
       const v = Vaults.getById(params.vaultId);
       headerTitle.textContent = v ? `${v.emoji} ${v.name}` : 'Coffrette';
+    } else if (viewId === 'group' && params.groupId) {
+      const g = Groups.getById(params.groupId);
+      headerTitle.textContent = g ? `${g.emoji} ${g.name}` : 'Groupe';
     } else {
       headerTitle.textContent = titles[viewId] || 'Coffrette';
     }
@@ -387,7 +429,8 @@ const Router = (() => {
   btnHistory.addEventListener('click', ()=>navigate('history'));
 
   const getVaultContext = () => vaultContext;
-  return { navigate, getVaultContext };
+  const getGroupContext = () => groupContext;
+  return { navigate, getVaultContext, getGroupContext };
 })();
 
 /* ── MODAL OPÉRATION ──────────────────────────────────────── */
@@ -466,6 +509,8 @@ const Modal = (() => {
     Render.home();
     const ctx = Router.getVaultContext();
     if (ctx) Render.vault({ vaultId:ctx });
+    const groupCtx = Router.getGroupContext();
+    if (groupCtx) Render.group({ groupId: groupCtx });
   });
 
   [inputAmount,inputNote,inputDate].forEach(el=>
@@ -620,35 +665,69 @@ const Confirm = (() => {
 /* ── RENDER ───────────────────────────────────────────────── */
 const Render = (() => {
 
+  function _vaultCard(v) {
+    const card = document.createElement('div');
+    card.className = 'card card--vault';
+    card.dataset.action  = 'open-vault';
+    card.dataset.vaultId = v.id;
+    card.setAttribute('role', 'button'); card.setAttribute('tabindex', '0');
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="vault-emoji">${v.emoji}</span>
+        <svg class="card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <span class="card-name">${v.name}</span>
+      <span class="card-amount">${Currency.format(v.balance)}</span>
+    `;
+    return card;
+  }
+
   /* ── Home ── */
   function home() {
     const vaults = Vaults.getAll();
+    const groups = Groups.getAll();
     const total  = vaults.reduce((s,v)=>s+v.balance, 0);
     document.getElementById('totalAmount').textContent = Currency.format(total);
 
-    const sub = document.getElementById('totalSub');
-    sub.innerHTML = vaults.map((v,i)=>
-      `${i>0?'<span class="total-sep">·</span>':''}<span>${v.emoji} ${v.name} ${Currency.format(v.balance)}</span>`
-    ).join('');
+    // totalSub : groupes d'abord, puis coffrettes non-groupées
+    const groupedIds  = new Set(groups.flatMap(g => g.vaultIds));
+    const freeVaults  = vaults.filter(v => !groupedIds.has(v.id));
+    const subItems    = [];
+    groups.forEach(g => {
+      const bal = g.vaultIds.map(id => Vaults.getById(id)).filter(Boolean).reduce((s,v)=>s+v.balance,0);
+      subItems.push(`<span>${g.emoji} ${g.name} ${Currency.format(bal)}</span>`);
+    });
+    freeVaults.forEach(v => subItems.push(`<span>${v.emoji} ${v.name} ${Currency.format(v.balance)}</span>`));
+    document.getElementById('totalSub').innerHTML =
+      subItems.map((item,i) => (i>0 ? '<span class="total-sep">·</span>' : '') + item).join('');
 
-    // Cartes coffrettes
+    // Cartes
     const container = document.getElementById('vaultCards');
-    container.innerHTML='';
-    vaults.forEach(v=>{
-      const card = document.createElement('div');
-      card.className='card card--vault';
-      card.dataset.action='open-vault'; card.dataset.vaultId=v.id;
+    container.innerHTML = '';
+
+    // Cartes de groupes
+    groups.forEach(g => {
+      const gVaults = g.vaultIds.map(id => Vaults.getById(id)).filter(Boolean);
+      const gBal    = gVaults.reduce((s,v)=>s+v.balance, 0);
+      const card    = document.createElement('div');
+      card.className = 'card card--vault card--group';
+      card.dataset.action  = 'open-group';
+      card.dataset.groupId = g.id;
       card.setAttribute('role','button'); card.setAttribute('tabindex','0');
-      card.innerHTML=`
+      card.innerHTML = `
         <div class="card-top">
-          <span class="vault-emoji">${v.emoji}</span>
+          <span class="vault-emoji">${g.emoji}</span>
           <svg class="card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
         </div>
-        <span class="card-name">${v.name}</span>
-        <span class="card-amount">${Currency.format(v.balance)}</span>
+        <span class="card-name">${g.name}</span>
+        <span class="group-sub-emojis">${gVaults.map(v=>v.emoji).join('  ')}</span>
+        <span class="card-amount">${Currency.format(gBal)}</span>
       `;
       container.appendChild(card);
     });
+
+    // Cartes coffrettes non-groupées
+    freeVaults.forEach(v => container.appendChild(_vaultCard(v)));
 
     // Stats mois
     const exp   = Operations.monthlyExpenses();
@@ -696,6 +775,36 @@ const Render = (() => {
     // Ops : toutes sauf initiales en premier, initiale à la fin
     const ops = Storage.getState().operations.filter(o=>o.vaultId===vaultId);
     UI.renderOpList(document.getElementById('vaultOpsList'), ops, 'Aucune opération sur cette coffrette');
+  }
+
+  /* ── Group ── */
+  function group({ groupId }) {
+    const g = Groups.getById(groupId);
+    if (!g) return;
+    const gVaults = g.vaultIds.map(id => Vaults.getById(id)).filter(Boolean);
+    const gBal    = gVaults.reduce((s,v)=>s+v.balance, 0);
+
+    document.getElementById('groupHeroLabel').textContent  = `${g.emoji} ${g.name}`;
+    document.getElementById('groupHeroAmount').textContent = Currency.format(gBal);
+
+    // Bilan mois cumulé pour toutes les coffrettes du groupe
+    const mk = DateHelpers.toMonthKey(DateHelpers.today());
+    let totalInc = 0, totalExp = 0;
+    gVaults.forEach(v => {
+      const { inc, exp } = Operations.bilanForVaultMonth(v.id, mk);
+      totalInc += inc; totalExp += exp;
+    });
+    const gBilan = +(totalInc - totalExp).toFixed(2);
+    document.getElementById('groupMonthInc').textContent     = Currency.format(totalInc);
+    document.getElementById('groupMonthExp').textContent     = Currency.format(totalExp);
+    const bilanEl = document.getElementById('groupMonthBilanAmt');
+    bilanEl.textContent = UI.bilanSign(gBilan) + Currency.format(gBilan);
+    bilanEl.className   = 'vmb-value ' + (gBilan>0?'vmb-value--pos':gBilan<0?'vmb-value--neg':'');
+
+    // Cartes des coffrettes à l'intérieur
+    const container = document.getElementById('groupVaultCards');
+    container.innerHTML = '';
+    gVaults.forEach(v => container.appendChild(_vaultCard(v)));
   }
 
   /* ── Expenses ── */
@@ -810,17 +919,50 @@ const Render = (() => {
 
   /* ── Manage vaults ── */
   function manageVaults() {
+    // ── Groupes ──
+    const groupsContainer = document.getElementById('manageGroupList');
+    groupsContainer.innerHTML = '';
+    const allGroups = Groups.getAll();
+    if (!allGroups.length) {
+      groupsContainer.innerHTML = '<p class="empty-state" style="padding:10px 0 4px">Aucun groupe pour l\'instant</p>';
+    } else {
+      allGroups.forEach(g => {
+        const gVaults  = g.vaultIds.map(id => Vaults.getById(id)).filter(Boolean);
+        const totalBal = gVaults.reduce((s,v) => s+v.balance, 0);
+        const item = document.createElement('div');
+        item.className = 'vault-manage-item vault-manage-item--group';
+        item.innerHTML = `
+          <span class="vault-manage-emoji">${g.emoji}</span>
+          <div class="vault-manage-info">
+            <div class="vault-manage-name">${g.name}</div>
+            <div class="vault-manage-amount">${Currency.format(totalBal)} · ${gVaults.map(v=>v.emoji+' '+v.name).join(', ')}</div>
+          </div>
+          <div class="vault-manage-actions">
+            <button class="op-btn op-btn--edit" data-action="rename-group" data-id="${g.id}" aria-label="Modifier">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="op-btn op-btn--delete" data-action="delete-group" data-id="${g.id}" aria-label="Supprimer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </div>
+        `;
+        groupsContainer.appendChild(item);
+      });
+    }
+
+    // ── Coffrettes ──
     const container = document.getElementById('manageVaultList');
-    container.innerHTML='';
+    container.innerHTML = '';
     const vaults = Vaults.getAll();
-    if (!vaults.length) { container.innerHTML='<p class="empty-state">Aucune coffrette</p>'; return; }
-    vaults.forEach(v=>{
+    if (!vaults.length) { container.innerHTML = '<p class="empty-state">Aucune coffrette</p>'; return; }
+    vaults.forEach(v => {
+      const inGroup = Groups.getForVault(v.id);
       const item = document.createElement('div');
-      item.className='vault-manage-item';
-      item.innerHTML=`
+      item.className = 'vault-manage-item';
+      item.innerHTML = `
         <span class="vault-manage-emoji">${v.emoji}</span>
         <div class="vault-manage-info">
-          <div class="vault-manage-name">${v.name}</div>
+          <div class="vault-manage-name">${v.name}${inGroup ? ` <span class="vault-in-group-tag">${inGroup.emoji} ${inGroup.name}</span>` : ''}</div>
           <div class="vault-manage-amount">${Currency.format(v.balance)}${v.initialBalance>0?' · initial '+Currency.format(v.initialBalance):''}</div>
         </div>
         <div class="vault-manage-actions">
@@ -837,7 +979,77 @@ const Render = (() => {
     });
   }
 
-  return { home, vault, expenses, incomes, history, manageVaults };
+  return { home, group, vault, expenses, incomes, history, manageVaults };
+})();
+
+/* ── MODAL GROUPE ─────────────────────────────────────────── */
+const GroupModal = (() => {
+  const overlay    = document.getElementById('groupModalOverlay');
+  const btnClose   = document.getElementById('groupModalClose');
+  const btnSubmit  = document.getElementById('groupModalSubmit');
+  const titleEl    = document.getElementById('groupModalTitle');
+  const inputEmoji = document.getElementById('groupInputEmoji');
+  const inputName  = document.getElementById('groupInputName');
+  const listEl     = document.getElementById('groupVaultList');
+  const errorEl    = document.getElementById('groupFormError');
+  let editId = null;
+
+  function buildPicker(selectedIds = []) {
+    listEl.innerHTML = '';
+    const allGroups  = Groups.getAll();
+    const selected   = new Set(selectedIds);
+    Vaults.getAll().forEach(v => {
+      const takenBy  = allGroups.find(g => g.id !== editId && g.vaultIds.includes(v.id));
+      const isActive = selected.has(v.id);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'group-vault-pick' + (isActive ? ' active' : '') + (takenBy ? ' taken' : '');
+      btn.dataset.vaultId = v.id;
+      if (takenBy) btn.disabled = true;
+      btn.innerHTML = `
+        <span class="group-vault-pick-name">${v.emoji} ${v.name}</span>
+        ${takenBy ? `<span class="group-vault-pick-tag">dans ${takenBy.emoji} ${takenBy.name}</span>` : ''}
+        <svg class="group-vault-pick-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      `;
+      if (!takenBy) btn.addEventListener('click', () => btn.classList.toggle('active'));
+      listEl.appendChild(btn);
+    });
+  }
+
+  function open(group = null) {
+    editId = group?.id || null;
+    titleEl.textContent   = editId ? 'Modifier le groupe' : 'Nouveau groupe';
+    btnSubmit.textContent = editId ? 'Enregistrer' : 'Créer le groupe';
+    inputEmoji.value = group?.emoji || '';
+    inputName.value  = group?.name  || '';
+    errorEl.classList.add('hidden');
+    buildPicker(group?.vaultIds || []);
+    overlay.classList.remove('hidden');
+    requestAnimationFrame(() => inputName.focus());
+  }
+
+  function close() { overlay.classList.add('hidden'); editId = null; }
+  function showError(msg) { errorEl.textContent = msg; errorEl.classList.remove('hidden'); }
+
+  btnClose.addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  btnSubmit.addEventListener('click', () => {
+    errorEl.classList.add('hidden');
+    const name  = inputName.value.trim();
+    const emoji = inputEmoji.value.trim() || '📦';
+    if (!name) return showError('Donne un nom au groupe.');
+    const vaultIds = [...listEl.querySelectorAll('.group-vault-pick.active')].map(b => b.dataset.vaultId);
+    if (vaultIds.length < 2) return showError('Sélectionne au moins 2 coffrettes.');
+    if (editId) { Groups.update(editId, { name, emoji, vaultIds }); UI.toast('Groupe modifié ✓'); }
+    else        { Groups.add({ name, emoji, vaultIds });              UI.toast('Groupe créé ✓'); }
+    close();
+    Render.home();
+    Render.manageVaults();
+  });
+
+  inputName.addEventListener('keydown', e => { if (e.key === 'Enter') btnSubmit.click(); });
+  return { open };
 })();
 
 /* ── EVENT DELEGATION ─────────────────────────────────────── */
@@ -847,6 +1059,7 @@ document.addEventListener('click', e=>{
   const { action, vaultId, detail, id } = el.dataset;
 
   if (action==='open-vault')    return Router.navigate('vault', { vaultId });
+  if (action==='open-group')   return Router.navigate('group', { groupId: el.dataset.groupId });
   if (action==='open-detail')  return Router.navigate(detail);
   if (action==='edit-balance') return BalanceEditModal.open(vaultId);
 
@@ -867,8 +1080,20 @@ document.addEventListener('click', e=>{
     return;
   }
 
-  if (action==='set-initial') { InitialModal.open(id); return; }
+  if (action==='set-initial')  { InitialModal.open(id); return; }
   if (action==='rename-vault') { const v=Vaults.getById(id); if(v) VaultModal.open(v); return; }
+  if (action==='rename-group') { const g=Groups.getById(id); if(g) GroupModal.open(g); return; }
+
+  if (action==='delete-group') {
+    const g = Groups.getById(id);
+    if (!g) return;
+    Confirm.ask(`Dissoudre le groupe "${g.name}" ? Les coffrettes restent intactes.`, () => {
+      Groups.remove(id);
+      UI.toast(`Groupe "${g.name}" supprimé`);
+      Render.home(); Render.manageVaults();
+    });
+    return;
+  }
 
   if (action==='delete-vault') {
     const v = Vaults.getById(id);
@@ -890,6 +1115,7 @@ document.getElementById('fab').addEventListener('click', ()=>Modal.open());
 document.getElementById('btnSeeAll').addEventListener('click', ()=>Router.navigate('history'));
 document.getElementById('btnManageVaults').addEventListener('click', ()=>Router.navigate('manageVaults'));
 document.getElementById('btnAddVault').addEventListener('click', ()=>VaultModal.open());
+document.getElementById('btnAddGroup').addEventListener('click', ()=>GroupModal.open());
 document.getElementById('filterMonth').addEventListener('change', ()=>Render.history());
 
 /* ── INIT ─────────────────────────────────────────────────── */

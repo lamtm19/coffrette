@@ -80,6 +80,34 @@
       </div>
     </section>
 
+    <!-- GROUP DETAIL -->
+    <section class="view" id="viewGroup">
+      <div class="view-content">
+        <div class="detail-hero" id="groupHero">
+          <p class="detail-hero-sub" id="groupHeroLabel">Groupe</p>
+          <p class="detail-hero-amount" id="groupHeroAmount">0 €</p>
+        </div>
+        <div class="vault-month-bilan" id="groupMonthBilan">
+          <div class="vmb-item">
+            <span class="vmb-label">Rentrées</span>
+            <span class="vmb-value vmb-value--in" id="groupMonthInc">0 €</span>
+          </div>
+          <div class="vmb-sep"></div>
+          <div class="vmb-item">
+            <span class="vmb-label">Dépenses</span>
+            <span class="vmb-value vmb-value--out" id="groupMonthExp">0 €</span>
+          </div>
+          <div class="vmb-sep"></div>
+          <div class="vmb-item">
+            <span class="vmb-label">Bilan</span>
+            <span class="vmb-value" id="groupMonthBilanAmt">0 €</span>
+          </div>
+        </div>
+        <div class="section-label">Coffrettes</div>
+        <div class="cards-row" id="groupVaultCards"></div>
+      </div>
+    </section>
+
     <!-- VAULT DETAIL -->
     <section class="view" id="viewVault">
       <div class="view-content">
@@ -157,6 +185,14 @@
     <!-- MANAGE VAULTS -->
     <section class="view" id="viewManageVaults">
       <div class="view-content">
+        <div class="section-label section-label--flex">
+          Groupes
+          <button class="link-btn" id="btnAddGroup">Créer →</button>
+        </div>
+        <div class="manage-list" id="manageGroupList"></div>
+        <div class="section-label section-label--flex" style="margin-top:20px">
+          Coffrettes
+        </div>
         <div class="manage-list" id="manageVaultList"></div>
         <button class="btn-add-vault" id="btnAddVault">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -278,6 +314,34 @@
     <div class="confirm-actions">
       <button class="btn-ghost" id="btnCancelDelete">Annuler</button>
       <button class="btn-danger" id="btnConfirmDelete">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GROUPE -->
+<div class="modal-overlay hidden" id="groupModalOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="groupModalTitle">Nouveau groupe</h2>
+      <button class="modal-close" id="groupModalClose" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="groupInputEmoji">Emoji</label>
+        <input type="text" id="groupInputEmoji" class="form-input form-input--emoji" placeholder="📦" maxlength="2" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="groupInputName">Nom du groupe</label>
+        <input type="text" id="groupInputName" class="form-input" placeholder="Ex : Logement, Épargne…" maxlength="30" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Coffrettes à regrouper <span class="optional">(min. 2)</span></label>
+        <div class="group-vault-list" id="groupVaultList"></div>
+      </div>
+      <button type="button" class="btn-submit" id="groupModalSubmit">Créer le groupe</button>
+      <p class="form-error hidden" id="groupFormError"></p>
     </div>
   </div>
 </div>
