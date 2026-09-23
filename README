@@ -8,6 +8,7 @@ Application mobile-first permettant de suivre ses dépenses et ses rentrées d�
 
 - 💸 Suivi des dépenses (ce que tu dépenses)  
 - 💰 Suivi des rentrées d’argent (ce que tu ajoutes)  
+- 🧮 Écran « Gains du jour » au lancement : calculatrice pour additionner ses bénéfices et les envoyer dans une coffrette  
 - 🧾 Historique complet des transactions  
 - 🏦 Gestion de plusieurs coffrettes (ex : Paris, Ivry…)  
 - 📊 Vision claire du solde disponible  

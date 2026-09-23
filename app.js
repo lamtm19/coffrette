@@ -207,9 +207,10 @@ const Operations = (() => {
     if (op.type === 'transfer') v.balance = +(v.balance + op.amount).toFixed(2);
   }
 
-  function add({ type, vaultId, amount, note, date }) {
+  function add({ type, vaultId, amount, note, date, source }) {
     const state = Storage.getState();
     const op = { id: genId(), type, vaultId, amount, note: note||'', date };
+    if (source) op.source = source;
     _apply(state, op);
     state.operations.unshift(op);
     Storage.setState(state);
@@ -433,6 +434,115 @@ const Router = (() => {
   return { navigate, getVaultContext, getGroupContext };
 })();
 
+/* ── CALCULATRICE ─────────────────────────────────────────── */
+/**
+ * Calculette d'addition réutilisable, construite dans `root`.
+ * opts.isActive() : la saisie clavier n'est captée que si elle renvoie true
+ * opts.onChange(liveTotal) / opts.onEnter() : callbacks
+ */
+function Calculator(root, { isActive, onChange = () => {}, onEnter = () => {} }) {
+  const KEYS = [
+    ['7'], ['8'], ['9'], ['back', '⌫', 'fn', 'Effacer le dernier chiffre'],
+    ['4'], ['5'], ['6'], ['clear', 'C', 'fn', 'Effacer'],
+    ['1'], ['2'], ['3'], ['add', '+', 'add', 'Ajouter ce montant'],
+    ['.', ','], ['0'], ['00'],
+  ];
+  root.innerHTML = `
+    <div class="calc-display">
+      <div class="calc-lines"></div>
+      <div class="calc-entry">
+        <span class="calc-entry-sign">+</span>
+        <span class="calc-entry-value">0</span>
+        <span class="calc-entry-cur">€</span>
+      </div>
+      <div class="calc-total-row">
+        <span class="calc-total-label">Total</span>
+        <span class="calc-total">0 €</span>
+      </div>
+    </div>
+    <div class="calc-keypad">
+      ${KEYS.map(([key, label = key, mod, aria]) => `
+        <button type="button" class="calc-key${mod ? ' calc-key--' + mod : ''}" data-key="${key}"${aria ? ` aria-label="${aria}"` : ''}>${label}</button>`).join('')}
+    </div>`;
+
+  const linesEl = root.querySelector('.calc-lines');
+  const entryEl = root.querySelector('.calc-entry-value');
+  const totalEl = root.querySelector('.calc-total');
+
+  // entry : saisie en cours, séparateur décimal interne '.'
+  let lines = [], entry = '';
+
+  const entryValue = () => parseFloat(entry) || 0;
+  const total      = () => +lines.reduce((s,n)=>s+n, 0).toFixed(2);
+  const liveTotal  = () => +(total() + entryValue()).toFixed(2);
+
+  function press(key) {
+    if (key === 'back')  entry = entry.slice(0, -1);
+    else if (key === 'clear') { if (entry) entry = ''; else lines = []; }
+    else if (key === 'add')   commit();
+    else if (key === '.')     { if (!entry.includes('.')) entry = (entry || '0') + '.'; }
+    else {
+      let next = (entry === '0' ? '' : entry) + key;
+      if (!next.includes('.')) next = next.replace(/^0+(?=\d)/, '');
+      const [int, dec] = next.split('.');
+      if (int.length > 7 || (dec && dec.length > 2)) return;
+      entry = next;
+    }
+    render();
+  }
+
+  /** Ajoute la saisie en cours à la liste */
+  function commit() {
+    const v = entryValue();
+    if (v > 0) lines.push(+v.toFixed(2));
+    entry = '';
+    render();
+  }
+
+  function render() {
+    entryEl.textContent = entry ? entry.replace('.', ',') : '0';
+    totalEl.textContent = Currency.format(liveTotal());
+    if (!lines.length) {
+      linesEl.innerHTML = '<p class="calc-hint">Tape chaque montant puis appuie sur <strong>+</strong></p>';
+    } else {
+      linesEl.innerHTML = lines.map((n, i) => `
+        <div class="calc-line">
+          <span class="calc-line-idx">Montant ${i+1}</span>
+          <span class="calc-line-amount">+${Currency.format(n)}</span>
+          <button type="button" class="calc-line-remove" data-remove="${i}" aria-label="Retirer">×</button>
+        </div>`).join('');
+      linesEl.scrollTop = linesEl.scrollHeight;
+    }
+    onChange(liveTotal());
+  }
+
+  function reset(amounts = []) { lines = amounts.filter(n => n > 0); entry = ''; render(); }
+
+  root.addEventListener('click', e => {
+    const k = e.target.closest('[data-key]');
+    if (k) return press(k.dataset.key);
+    const r = e.target.closest('[data-remove]');
+    if (r) { lines.splice(Number(r.dataset.remove), 1); render(); }
+  });
+
+  // Saisie au clavier physique (ordinateur), sauf si on écrit dans un champ texte
+  document.addEventListener('keydown', e => {
+    if (!isActive() || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.closest('input, select, textarea')) return;
+    let key = null;
+    if (/^[0-9]$/.test(e.key))               key = e.key;
+    else if (e.key === ',' || e.key === '.') key = '.';
+    else if (e.key === 'Backspace')          key = 'back';
+    else if (e.key === 'Delete')             key = 'clear';
+    else if (e.key === '+')                  key = 'add';
+    else if (e.key === 'Enter')              { e.preventDefault(); entry ? commit() : onEnter(); return; }
+    if (key) { e.preventDefault(); press(key); }
+  });
+
+  render();
+  return { reset, commit, total, lines: () => [...lines] };
+}
+
 /* ── MODAL OPÉRATION ──────────────────────────────────────── */
 const Modal = (() => {
   const overlay     = document.getElementById('modalOverlay');
@@ -440,7 +550,10 @@ const Modal = (() => {
   const btnSubmit   = document.getElementById('btnSubmit');
   const modalTitle  = document.getElementById('modalTitle');
   const formError   = document.getElementById('formError');
-  const inputAmount = document.getElementById('inputAmount');
+  const calc        = Calculator(document.getElementById('opCalc'), {
+    isActive: () => !overlay.classList.contains('hidden'),
+    onEnter:  () => btnSubmit.click(),
+  });
   const inputNote   = document.getElementById('inputNote');
   const inputDate   = document.getElementById('inputDate');
   const typeBtns    = document.querySelectorAll('.type-btn');
@@ -476,17 +589,16 @@ const Modal = (() => {
     btnSubmit.textContent  = editId ? 'Enregistrer les modifications' : 'Enregistrer';
     selectedType=null; selectedVault=prefill.vaultId||null;
     typeBtns.forEach(b=>b.classList.remove('active'));
-    inputAmount.value=''; inputNote.value='';
+    calc.reset(prefill.amount ? [prefill.amount] : []);
+    inputNote.value='';
     inputDate.value=DateHelpers.today();
     formError.classList.add('hidden');
     buildVaultButtons();
     if (prefill.type)    selectType(prefill.type);
     if (prefill.vaultId) selectVault(prefill.vaultId);
-    if (prefill.amount)  inputAmount.value=prefill.amount;
     if (prefill.note)    inputNote.value=prefill.note;
     if (prefill.date)    inputDate.value=prefill.date;
     overlay.classList.remove('hidden');
-    requestAnimationFrame(()=>inputAmount.focus());
   }
 
   function close() { overlay.classList.add('hidden'); editId=null; }
@@ -499,7 +611,8 @@ const Modal = (() => {
     formError.classList.add('hidden');
     if (!selectedType)  return showError("Sélectionne un type d'opération.");
     if (!selectedVault) return showError('Sélectionne une coffrette.');
-    const raw = parseFloat(inputAmount.value.replace(',','.'));
+    calc.commit();
+    const raw = calc.total();
     if (!raw || raw<=0) return showError('Montant invalide.');
     const payload = { type:selectedType, vaultId:selectedVault, amount:raw,
       note:inputNote.value.trim(), date:inputDate.value||DateHelpers.today() };
@@ -513,7 +626,7 @@ const Modal = (() => {
     if (groupCtx) Render.group({ groupId: groupCtx });
   });
 
-  [inputAmount,inputNote,inputDate].forEach(el=>
+  [inputNote,inputDate].forEach(el=>
     el.addEventListener('keydown', e=>{ if(e.key==='Enter') btnSubmit.click(); })
   );
   return { open, close };
@@ -1052,6 +1165,119 @@ const GroupModal = (() => {
   return { open };
 })();
 
+/* ── ÉCRAN GAINS DU JOUR ──────────────────────────────────── */
+const DailyGains = (() => {
+  const screen     = document.getElementById('dailyScreen');
+  const stepCalc   = document.getElementById('dailyStepCalc');
+  const stepVault  = document.getElementById('dailyStepVault');
+  const dateEl     = document.getElementById('dailyDate');
+  const alreadyEl  = document.getElementById('dailyAlready');
+  const btnSkip    = document.getElementById('dailySkip');
+  const btnNext    = document.getElementById('dailyNext');
+  const summaryEl  = document.getElementById('dailySummaryAmount');
+  const summarySub = document.getElementById('dailySummarySub');
+  const vaultRow   = document.getElementById('dailyVaultRow');
+  const errorEl    = document.getElementById('dailyError');
+  const btnSend    = document.getElementById('dailySend');
+  const btnBack    = document.getElementById('dailyBack');
+
+  let selectedVault=null, step='calc';
+  const isOpen = () => !screen.classList.contains('hidden');
+
+  const calc = Calculator(document.getElementById('dailyCalc'), {
+    isActive: () => isOpen() && step === 'calc',
+    onChange: live => { btnNext.disabled = live <= 0; },
+    onEnter:  () => btnNext.click(),
+  });
+
+  function selectVault(id) {
+    selectedVault = id;
+    vaultRow.querySelectorAll('.vault-btn').forEach(b => b.classList.toggle('active', b.dataset.vault === id));
+    const v = Vaults.getById(id);
+    btnSend.textContent = v ? `Envoyer ${Currency.format(calc.total())} dans ${v.emoji} ${v.name}` : 'Envoyer';
+  }
+
+  function goTo(s) {
+    step = s;
+    stepCalc.classList.toggle('hidden',  s !== 'calc');
+    stepVault.classList.toggle('hidden', s !== 'vault');
+    errorEl.classList.add('hidden');
+    if (s === 'calc') return;
+
+    const lines = calc.lines();
+    summaryEl.textContent  = Currency.format(calc.total());
+    summarySub.textContent = lines.length > 1 ? lines.map(n => Currency.format(n)).join(' + ') : '';
+
+    const vaults = Vaults.getAll();
+    vaultRow.innerHTML = '';
+    vaults.forEach(v => {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'vault-btn';
+      btn.dataset.vault = v.id; btn.textContent = `${v.emoji} ${v.name}`;
+      btn.addEventListener('click', () => selectVault(v.id));
+      vaultRow.appendChild(btn);
+    });
+    // Présélection : dernière coffrette utilisée, ou la seule existante
+    const last = Storage.getState().lastDailyVaultId;
+    const pre  = Vaults.getById(last) ? last : (vaults.length === 1 ? vaults[0].id : null);
+    selectedVault = null;
+    btnSend.textContent = 'Envoyer';
+    if (pre) selectVault(pre);
+    if (!vaults.length) showError("Aucune coffrette : crée-en une d'abord dans « Gérer ».");
+  }
+
+  function showError(msg) { errorEl.textContent = msg; errorEl.classList.remove('hidden'); }
+
+  function open() {
+    calc.reset(); selectedVault = null;
+    const label = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+    dateEl.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+
+    const today = DateHelpers.today();
+    const already = Storage.getState().operations
+      .filter(o => o.source === 'daily' && o.date === today)
+      .reduce((s, o) => s + o.amount, 0);
+    alreadyEl.textContent = `Déjà envoyé aujourd'hui : ${Currency.format(already)}`;
+    alreadyEl.classList.toggle('hidden', already <= 0);
+
+    screen.classList.remove('hidden');
+    goTo('calc');
+  }
+
+  function close() { screen.classList.add('hidden'); }
+
+  btnSkip.addEventListener('click', () => { close(); UI.toast("Pas de gains aujourd'hui, à demain !"); });
+  btnNext.addEventListener('click', () => {
+    calc.commit();
+    if (calc.total() > 0) goTo('vault');
+  });
+  btnBack.addEventListener('click', () => goTo('calc'));
+
+  btnSend.addEventListener('click', () => {
+    errorEl.classList.add('hidden');
+    if (!selectedVault) return showError('Sélectionne une coffrette.');
+    const amount = calc.total();
+    const count  = calc.lines().length;
+    Operations.add({
+      type: 'income', vaultId: selectedVault, amount,
+      note: count > 1 ? `Gains du jour (${count} bénéfs)` : 'Gains du jour',
+      date: DateHelpers.today(), source: 'daily',
+    });
+    const state = Storage.getState();
+    state.lastDailyVaultId = selectedVault;
+    Storage.setState(state);
+    UI.toast(`${Currency.format(amount)} ajoutés à ${UI.vaultLabel(selectedVault)} ✓`);
+    close();
+    Render.home();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (isOpen() && step === 'vault' && e.key === 'Enter') { e.preventDefault(); btnSend.click(); }
+  });
+
+  return { open };
+})();
+
 /* ── EVENT DELEGATION ─────────────────────────────────────── */
 document.addEventListener('click', e=>{
   const el = e.target.closest('[data-action]');
@@ -1123,4 +1349,5 @@ document.getElementById('filterMonth').addEventListener('change', ()=>Render.his
   Storage.load();
   Operations.snapshotPreviousMonth();
   Render.home();
+  DailyGains.open();
 })();

@@ -239,11 +239,8 @@
         <div class="vault-select-row" id="vaultSelectRow"></div>
       </div>
       <div class="form-group">
-        <label class="form-label" for="inputAmount">Montant</label>
-        <div class="input-wrap">
-          <span class="input-prefix">€</span>
-          <input type="number" id="inputAmount" class="form-input" placeholder="0,00" min="0.01" step="0.01" inputmode="decimal" />
-        </div>
+        <label class="form-label">Montant</label>
+        <div class="calc calc--compact" id="opCalc"></div>
       </div>
       <div class="form-group">
         <label class="form-label" for="inputNote">Note <span class="optional">(facultatif)</span></label>
@@ -370,6 +367,44 @@
       </div>
       <button type="button" class="btn-submit" id="balanceEditSubmit">Enregistrer</button>
       <p class="form-error hidden" id="balanceEditError"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ÉCRAN GAINS DU JOUR (au lancement) -->
+<div class="daily-screen hidden" id="dailyScreen" role="dialog" aria-modal="true" aria-labelledby="dailyTitle">
+  <div class="daily-inner">
+    <header class="daily-header">
+      <p class="daily-date" id="dailyDate"></p>
+      <h1 class="daily-title" id="dailyTitle">Combien as-tu gagné aujourd'hui ?</h1>
+      <p class="daily-already hidden" id="dailyAlready"></p>
+    </header>
+
+    <!-- Étape 1 : calculatrice -->
+    <div class="daily-step" id="dailyStepCalc">
+      <div class="calc" id="dailyCalc"></div>
+      <div class="daily-actions">
+        <button type="button" class="btn-ghost" id="dailySkip">Rien gagné</button>
+        <button type="button" class="btn-submit" id="dailyNext">Continuer →</button>
+      </div>
+    </div>
+
+    <!-- Étape 2 : choix de la coffrette -->
+    <div class="daily-step hidden" id="dailyStepVault">
+      <div class="daily-summary">
+        <span class="daily-summary-label">Total du jour</span>
+        <span class="daily-summary-amount" id="dailySummaryAmount">0 €</span>
+        <span class="daily-summary-sub" id="dailySummarySub"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dans quelle coffrette ?</label>
+        <div class="vault-select-row" id="dailyVaultRow"></div>
+      </div>
+      <p class="form-error hidden" id="dailyError"></p>
+      <div class="daily-actions daily-actions--stack">
+        <button type="button" class="btn-submit" id="dailySend">Envoyer</button>
+        <button type="button" class="btn-ghost" id="dailyBack">← Modifier le calcul</button>
+      </div>
     </div>
   </div>
 </div>
